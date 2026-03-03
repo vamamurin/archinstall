@@ -5,7 +5,13 @@ set -e
 # ==========================================
 # Environment Variables
 # ==========================================
+pacman -Sy archlinux-keyring --noconfirm
+
 DISK="/dev/sdX" 
+lsblk
+read -p "Type YES to erase $DISK: " confirm
+[ "$confirm" != "YES" ] && exit 1
+
 USER="admin" 
 HOST="debian-wazuh" 
 LOCALE="en_US.UTF-8" 
@@ -49,25 +55,37 @@ genfstab -U /mnt >> /mnt/etc/fstab
 # 4. Chroot into debian to configure
 echo "Chroot into new system..."
 
-mount --types proc /proc /mnt/proc
-mount --rbind /sys /mnt/sys
-mount --rbind /dev /mnt/dev
-mount --rbind /run /mnt/run
-
 arch-chroot /mnt /bin/bash <<EOF
 
+export DEBIAN_FRONTEND=noninteractive
+
+set -e
+export PATH=/usr/sbin:/usr/bin:/sbin:/bin
+
 DISK="$DISK"
+
 
 # Timezone configuration
 ln -sf /usr/share/zoneinfo/$TIMEZONE /etc/localtime
 
 # Update repo and install the basic packages
-export DEBIAN_FRONTEND=noninteractive
+# Install Kernel and Bootloader
 apt-get update
-apt-get install -y locales sudo network-manager vim wget curl
+apt-get install -y \
+    linux-image-amd64 \
+    grub-pc \
+    grub-common \
+    passwd \
+    login \
+    sudo \
+    locales \
+    network-manager \
+    systemd-sysv \
+    openssh-server
+
 
 # Locale configuration
-echo "$LOCALE UTF-8" >> /etc/locale.gen
+grep -q "^$LOCALE UTF-8" /etc/locale.gen || echo "$LOCALE UTF-8" >> /etc/locale.gen
 locale-gen
 echo "LANG=$LOCALE" > /etc/default/locale
 
@@ -79,8 +97,7 @@ cat <<EOL > /etc/hosts
 127.0.1.1   $HOST.localdomain $HOST
 EOL
 
-# Install Kernel and Bootloader
-apt-get install -y linux-image-amd64 grub-pc
+
 
 # Turn on network service
 systemctl enable NetworkManager
@@ -104,5 +121,5 @@ EOF
 
 # 5. finish
 echo "Done! Debian $DEBIAN_RELEASE has been installed (Headless/CLI)."
-umount -R /mnt
+umount -R -l /mnt
 echo "use reboot"
