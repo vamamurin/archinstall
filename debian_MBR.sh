@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 # ==========================================
 # Environment Variables
 # ==========================================
@@ -46,7 +48,15 @@ genfstab -U /mnt >> /mnt/etc/fstab
 
 # 4. Chroot into debian to configure
 echo "Chroot into new system..."
+
+mount --types proc /proc /mnt/proc
+mount --rbind /sys /mnt/sys
+mount --rbind /dev /mnt/dev
+mount --rbind /run /mnt/run
+
 arch-chroot /mnt /bin/bash <<EOF
+
+DISK="$DISK"
 
 # Timezone configuration
 ln -sf /usr/share/zoneinfo/$TIMEZONE /etc/localtime
@@ -57,7 +67,7 @@ apt-get update
 apt-get install -y locales sudo network-manager vim wget curl
 
 # Locale configuration
-sed -i "s/^# *$LOCALE UTF-8/$LOCALE UTF-8/" /etc/locale.gen
+echo "$LOCALE UTF-8" >> /etc/locale.gen
 locale-gen
 echo "LANG=$LOCALE" > /etc/default/locale
 
@@ -76,7 +86,7 @@ apt-get install -y linux-image-amd64 grub-pc
 systemctl enable NetworkManager
 
 # Install GRUB
-grub-install --target=i386-pc --recheck $DISK
+grub-install --target=i386-pc --recheck \$DISK
 update-grub
 
 # set a password
