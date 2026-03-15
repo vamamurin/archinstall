@@ -79,7 +79,7 @@ apt-get install -y \
     login \
     sudo \
     locales \
-    network-manager \
+    ifupdown \
     systemd-sysv \
     openssh-server
 
@@ -98,9 +98,6 @@ cat <<EOL > /etc/hosts
 EOL
 
 
-
-# Turn on network service
-systemctl enable NetworkManager
 
 # Install GRUB
 grub-install --target=i386-pc --recheck \$DISK
