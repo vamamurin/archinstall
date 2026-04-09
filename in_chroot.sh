@@ -22,7 +22,7 @@ echo "[*] Set root password"
 passwd
 
 echo "[*] Install systemd-boot"
-bootctl --path=/boot install
+bootctl install
 
 echo "[*] Create loader.conf"
 mkdir -p /boot/loader/entries
@@ -32,11 +32,16 @@ timeout 3
 editor 0
 EOF
 
+echo "[*] Install Microcode"
+# change to amd-ucode for AMD cpu
+pacman -S --noconfirm intel-ucode
+
 echo "[*] Create boot entry"
 PARTUUID=$(blkid -s PARTUUID -o value /dev/sda4)
 cat <<EOF > /boot/loader/entries/arch.conf
 title   Arch Linux
 linux   /vmlinuz-linux
+initrd  /intel-ucode.img
 initrd  /initramfs-linux.img
 options root=PARTUUID=$PARTUUID rw
 EOF
@@ -52,8 +57,8 @@ echo "→ Open visudo and uncomment this line: %wheel ALL=(ALL:ALL) ALL"
 EDITOR=nano visudo
 
 echo "[*] Install network tools"
-pacman -S --noconfirm dhcpcd dhclient usbmuxd inetutils
-systemctl enable dhcpcd
+pacman -S --noconfirm dhcpcd usbmuxd inetutils networkmanager
+systemctl enable NetworkManager
 
 echo "[*] DONE! Now run:"
 echo "exit"
